@@ -30,6 +30,7 @@ function Shell() {
           <button role="tab" aria-selected={tab === 'finance'} className={tab === 'finance' ? 'on' : ''} onClick={() => setTab('finance')}>Finance Sheet</button>
         </nav>
         <div className="tools">
+          <SyncStatus />
           <button className={'btn small' + (settings.muted ? ' attention' : '')} aria-pressed={settings.muted} onClick={() => dispatch({ type: 'SETTINGS', patch: { muted: !settings.muted } })}>
             {settings.muted ? 'Alarm muted · Unmute' : 'Mute alarm'}
           </button>
@@ -49,6 +50,27 @@ function Shell() {
       <UndoToast />
     </>
   );
+}
+
+const SYNC_LABELS = {
+  off: ['local', 'This device only'],
+  connecting: ['wait', 'Connecting…'],
+  live: ['live', 'Shared · live'],
+  offline: ['wait', 'Offline · will sync'],
+  error: ['bad', 'Sync problem'],
+};
+
+function SyncStatus() {
+  const { cloud } = useStore();
+  const [kind, label] = SYNC_LABELS[cloud];
+  const tip = {
+    off: 'Data is saved in this browser only. Fill in src/firebase-config.js to share data between devices.',
+    connecting: 'Connecting to the shared database.',
+    live: 'All devices see the same guests, timers and finances.',
+    offline: 'No internet. Keep working; changes sync automatically when the connection is back.',
+    error: 'Could not reach the shared database. Check the Firebase setup and security rules.',
+  }[cloud];
+  return <span className={`sync ${kind}`} title={tip} role="status"><i aria-hidden="true" />{label}</span>;
 }
 
 export default function App() {

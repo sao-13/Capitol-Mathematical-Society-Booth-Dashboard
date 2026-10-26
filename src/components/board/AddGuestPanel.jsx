@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Segmented, PaymentBlock } from '../ui.jsx';
+import { Modal, Segmented, PaymentBlock, MiscCharge, miscAmount, miscItem } from '../ui.jsx';
 import { useStore } from '../../store/StoreProvider.jsx';
 import { uid } from '../../store/reducer.js';
 import { priceFor, addonsTotal, changeFor, shortfallFor, validateAmount, formatMoney, round2 } from '../../lib/pricing.js';
@@ -16,15 +16,17 @@ export default function AddGuestPanel({ onClose }) {
   const [picked, setPicked] = useState([]);
   const [method, setMethod] = useState('cash');
   const [paid, setPaid] = useState('');
+  const [misc, setMisc] = useState(null);
   const [tried, setTried] = useState(false);
   const fm = (n) => formatMoney(n, settings.currency);
 
   const mins = blocks * settings.baseMinutes;
   const restPrice = priceFor(mins, settings);
   const addons = settings.addons.filter((a) => picked.includes(a.id));
-  const total = round2(restPrice + addonsTotal(addons));
+  const extra = miscAmount(misc);
+  const total = round2(restPrice + addonsTotal(addons) + extra);
   const paidErr = validateAmount(paid);
-  const blocked = !!paidErr || shortfallFor(total, Number(paid)) > 0;
+  const blocked = (!!misc && !extra) || !!paidErr || shortfallFor(total, Number(paid)) > 0;
   const guest = `Guest ${state.guestCounter + 1}`;
 
   const submit = (e) => {
@@ -35,7 +37,7 @@ export default function AddGuestPanel({ onClose }) {
     const id = uid();
     const guestName = name.trim() || guest;
     const change = changeFor(total, Number(paid));
-    const items = [`Rest ${formatDuration(mins)}`, ...addons.map((a) => a.name)].join(' + ');
+    const items = [`Rest ${formatDuration(mins)}`, ...addons.map((a) => a.name), ...(extra ? [miscItem(misc)] : [])].join(' + ');
     dispatch({
       type: 'ADD_SESSION',
       usedGuest: !name.trim(),
@@ -96,8 +98,10 @@ export default function AddGuestPanel({ onClose }) {
           </div>
         )}
 
+        <MiscCharge misc={misc} setMisc={setMisc} fm={fm} showErrors={tried} />
+
         <div className="readout total">
-          <span>Total{addons.length ? ` (rest ${fm(restPrice)} + add-ons ${fm(addonsTotal(addons))})` : ''}</span>
+          <span>Total{addons.length || extra ? ` (rest ${fm(restPrice)}${addons.length ? ` + add-ons ${fm(addonsTotal(addons))}` : ''}${extra ? ` + ${misc.label.trim() || 'misc'} ${fm(extra)}` : ''})` : ''}</span>
           <strong>{fm(total)}</strong>
         </div>
 

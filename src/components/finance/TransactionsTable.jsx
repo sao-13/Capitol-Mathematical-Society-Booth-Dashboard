@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { CommitInput, parseMoney, ConfirmDialog } from '../ui.jsx';
+import { CommitInput, parseMoney, ConfirmDialog, Modal, PaymentBlock } from '../ui.jsx';
 import { useStore } from '../../store/StoreProvider.jsx';
 import { uid } from '../../store/reducer.js';
-import { changeFor, round2, formatMoney } from '../../lib/pricing.js';
+import { changeFor, shortfallFor, validateAmount, round2, formatMoney } from '../../lib/pricing.js';
 import { METHODS } from '../board/AddGuestPanel.jsx';
 
 export const toLocalInput = (ts) => {
@@ -22,6 +22,62 @@ const COLS = [
   ['paid', 'Paid'], ['change', 'Change'], ['method', 'Method'], ['notes', 'Notes'],
 ];
 
+/** Record a one-off charge (label + any amount) straight into the ledger. */
+function MiscDialog({ onClose }) {
+  const { state, dispatch } = useStore();
+  const { currency } = state.settings;
+  const fm = (n) => formatMoney(n, currency);
+  const [label, setLabel] = useState('');
+  const [guest, setGuest] = useState('');
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState('cash');
+  const [paid, setPaid] = useState('');
+  const [tried, setTried] = useState(false);
+  const price = Number(amount) > 0 ? round2(Number(amount)) : 0;
+  const blocked = !price || !!validateAmount(paid) || shortfallFor(price, Number(paid)) > 0;
+
+  const submit = (e) => {
+    e.preventDefault();
+    setTried(true);
+    if (blocked) return;
+    dispatch({
+      type: 'TX_ADD',
+      row: {
+        id: uid(), at: Date.now(), sessionId: null, participant: guest.trim(), items: `Misc: ${label.trim() || 'Misc charge'}`,
+        durationMin: 0, price, paid: Number(paid), change: changeFor(price, Number(paid)), method, notes: '',
+      },
+    });
+    onClose();
+  };
+
+  return (
+    <Modal title="Miscellaneous charge" onClose={onClose}>
+      <form onSubmit={submit} className="form">
+        <label className="field">
+          <span>What is it for?</span>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Charging fee, Water, Late fee" autoComplete="off" data-autofocus />
+        </label>
+        <div className="cols">
+          <label className="field grow">
+            <span>Guest (optional)</span>
+            <input value={guest} onChange={(e) => setGuest(e.target.value)} autoComplete="off" />
+          </label>
+          <label className="field narrow">
+            <span>Amount</span>
+            <input type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setPaid(e.target.value); }} placeholder="0" />
+          </label>
+        </div>
+        {tried && !price && <p className="err" role="alert">Enter an amount greater than 0.</p>}
+        <PaymentBlock total={price} method={method} setMethod={setMethod} paid={paid} setPaid={setPaid} fm={fm} showErrors={tried} />
+        <div className="row end">
+          <button type="button" className="btn" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn primary big" disabled={tried && blocked}>Add {fm(price)}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function TransactionsTable() {
   const { state, dispatch } = useStore();
   const { transactions, settings } = state;
@@ -30,6 +86,7 @@ export default function TransactionsTable() {
   const [method, setMethod] = useState('');
   const [sort, setSort] = useState({ key: 'at', dir: -1 });
   const [deleting, setDeleting] = useState(null);
+  const [miscOpen, setMiscOpen] = useState(false);
 
   const rows = useMemo(() => {
     const list = transactions.filter(
@@ -69,6 +126,7 @@ export default function TransactionsTable() {
           </label>
           {(from || to || method) && <button className="link" onClick={() => { setFrom(''); setTo(''); setMethod(''); }}>Clear filters</button>}
           <button className="btn" onClick={add}>Add row</button>
+          <button className="btn" onClick={() => setMiscOpen(true)}>+ Misc charge</button>
         </div>
       </div>
       <div className="table-wrap">
@@ -111,6 +169,7 @@ export default function TransactionsTable() {
           </tfoot>
         </table>
       </div>
+      {miscOpen && <MiscDialog onClose={() => setMiscOpen(false)} />}
       {deleting && (
         <ConfirmDialog
           title="Delete transaction?" danger confirmLabel="Delete"

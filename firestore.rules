@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Open access (no login), limited to the Rest Booth data paths.
+// Anyone with the website link can read and change this data.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /booths/{booth} {
+      allow read, write: if true;
+
+      match /{col}/{id} {
+        allow read, write: if col in ['sessions', 'transactions', 'expenses'];
+      }
+    }
+  }
+}

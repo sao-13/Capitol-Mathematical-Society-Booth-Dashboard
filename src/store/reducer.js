@@ -89,6 +89,28 @@ export function reducer(state, a) {
 
     case 'SETTINGS':
       return { ...state, settings: { ...state.settings, ...a.patch } };
+    // Changes made on other devices (see cloud.js)
+    case 'REMOTE_REPLACE':
+      return {
+        ...state,
+        ...a.data,
+        settings: { ...state.settings, ...(a.data.settings || {}) },
+        guestCounter: a.data.guestCounter ?? state.guestCounter,
+        undo: null,
+      };
+    case 'REMOTE': {
+      if (a.main) {
+        return {
+          ...state,
+          settings: { ...state.settings, ...(a.main.settings || {}) },
+          guestCounter: Math.max(state.guestCounter, a.main.guestCounter ?? 0),
+        };
+      }
+      const map = new Map(state[a.col].map((x) => [x.id, x]));
+      for (const r of a.upserts) map.set(r.id, r);
+      for (const id of a.deletes) map.delete(id);
+      return { ...state, [a.col]: [...map.values()] };
+    }
     case 'IMPORT':
       return initState(a.data);
     case 'RESET':

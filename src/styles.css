@@ -120,6 +120,12 @@ label.check { display: inline-flex; align-items: center; gap: 10px; font-weight:
 .topbar nav button.on { color: var(--ink); border-bottom-color: var(--ink); }
 .tools { margin-left: auto; display: flex; gap: 8px; align-items: center; padding: 8px 0; }
 
+.sync { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; color: var(--ink-2); margin-right: 6px; white-space: nowrap; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.sync.live i { background: var(--ok); }
+.sync.wait i { background: var(--warn); }
+.sync.bad { color: var(--bad); } .sync.bad i { background: var(--bad); }
+
 /* ---------- board ---------- */
 .board-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .stats { display: flex; gap: 0; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
@@ -285,3 +291,11 @@ table.mini td:last-child { width: 1%; }
   .print-only th, .print-only td { padding: 3pt 6pt; border: 1px solid #999; text-align: left; }
   .print-only .chart-bars { height: 110px; } .print-only .chart-col i { background: #333; }
 }
+
+/* Miscellaneous charge */
+.misc-add { align-self: flex-start; min-height: 44px; padding: 0 14px; border: 1px dashed var(--line); border-radius: var(--r); background: transparent; color: var(--ink-2); font: inherit; font-weight: 500; cursor: pointer; }
+.misc-add:hover { background: var(--sunken); color: var(--ink); }
+.misc-add span { font-weight: 700; margin-right: 4px; }
+.misc { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--sunken); }
+.misc-head { display: flex; justify-content: space-between; align-items: center; }
+.misc .cols { display: flex; gap: 12px; flex-wrap: wrap; }

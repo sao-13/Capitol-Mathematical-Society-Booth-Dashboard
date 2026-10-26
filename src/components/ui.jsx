@@ -118,3 +118,39 @@ export function PaymentBlock({ total, method, setMethod, paid, setPaid, fm, show
     </div>
   );
 }
+
+/** Misc charge value helpers. `misc` is null (hidden) or { label, amount } as typed strings. */
+export const miscAmount = (misc) => (misc && Number(misc.amount) > 0 ? Math.round(Number(misc.amount) * 100) / 100 : 0);
+export const miscLabel = (misc) => (misc?.label.trim() || 'Misc charge');
+export const miscItem = (misc) => `Misc: ${miscLabel(misc)}`;
+
+/** Optional one-off charge with a custom label and amount. */
+export function MiscCharge({ misc, setMisc, fm, showErrors }) {
+  if (!misc) {
+    return (
+      <button type="button" className="misc-add" onClick={() => setMisc({ label: '', amount: '' })}>
+        <span aria-hidden="true">+</span> Add miscellaneous charge
+      </button>
+    );
+  }
+  const bad = showErrors && !(Number(misc.amount) > 0);
+  return (
+    <div className="misc" role="group" aria-label="Miscellaneous charge">
+      <div className="misc-head">
+        <strong>Miscellaneous charge</strong>
+        <button type="button" className="link danger" onClick={() => setMisc(null)}>Remove</button>
+      </div>
+      <div className="cols">
+        <label className="field grow">
+          <span>Label</span>
+          <input value={misc.label} onChange={(e) => setMisc({ ...misc, label: e.target.value })} placeholder="e.g. Charging fee, Water, Late fee" autoComplete="off" data-autofocus />
+        </label>
+        <label className="field narrow">
+          <span>Amount</span>
+          <input type="number" min="0" step="0.01" inputMode="decimal" value={misc.amount} onChange={(e) => setMisc({ ...misc, amount: e.target.value })} placeholder="0" aria-invalid={bad || undefined} />
+        </label>
+      </div>
+      {bad && <p className="err" role="alert">Enter an amount greater than 0, or remove this charge.</p>}
+    </div>
+  );
+}

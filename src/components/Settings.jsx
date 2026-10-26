@@ -13,7 +13,8 @@ const parsePositive = (v) => {
   return String(v).trim() === '' || !(n > 0) ? undefined : n;
 };
 export default function Settings({ onClose }) {
-  const { state, dispatch, reset } = useStore();
+  const { state, dispatch, reset, cloud } = useStore();
+  const shared = cloud !== 'off';
   const s = state.settings;
   const [confirm, setConfirm] = useState(false);
   const [pending, setPending] = useState(null);
@@ -135,8 +136,9 @@ export default function Settings({ onClose }) {
         <section>
           <h3>Data</h3>
           <p className="muted">
-            Everything is saved in this browser only. To move to another device, export a backup here and import it there.
-            It includes settings, guests and their running timers, transactions and expenses.
+            {shared
+              ? 'Data is shared live with every device that opens this website. A backup is a snapshot of everything: settings, guests and their running timers, transactions and expenses.'
+              : 'Everything is saved in this browser only. To move to another device, export a backup here and import it there. It includes settings, guests and their running timers, transactions and expenses.'}
           </p>
           <div className="row wrap">
             <button className="btn" onClick={exportAll}>Export backup</button>
@@ -154,7 +156,7 @@ export default function Settings({ onClose }) {
       {pending && (
         <ConfirmDialog
           title="Import this backup?" danger confirmLabel="Replace my data"
-          message={`This replaces everything on this device with the backup (${pending.sessions.length} guests, ${pending.transactions.length} transactions, ${pending.expenses.length} expenses). Running timers continue from where they are now. Export a backup of this device first if you need it.`}
+          message={`This replaces everything ${shared ? 'on ALL devices' : 'on this device'} with the backup (${pending.sessions.length} guests, ${pending.transactions.length} transactions, ${pending.expenses.length} expenses). Running timers continue from where they are now. Export a backup first if you need the current data.`}
           onCancel={() => setPending(null)}
           onConfirm={() => { dispatch({ type: 'IMPORT', data: pending }); setPending(null); setImportMsg({ ok: true, text: 'Backup imported.' }); }}
         />
@@ -162,7 +164,7 @@ export default function Settings({ onClose }) {
       {confirm && (
         <ConfirmDialog
           title="Clear all data?" danger confirmLabel="Delete everything"
-          message="This permanently deletes all guests, transactions, expenses and settings from this browser. Export your CSVs first if you need them."
+          message={`This permanently deletes all guests, transactions, expenses and settings ${shared ? 'for EVERY device using this website' : 'from this browser'}. Export a backup first if you need them.`}
           onCancel={() => setConfirm(false)}
           onConfirm={() => { reset(); setConfirm(false); onClose(); }}
         />

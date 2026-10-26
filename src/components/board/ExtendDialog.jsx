@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Modal, Segmented, PaymentBlock } from '../ui.jsx';
+import { Modal, Segmented, PaymentBlock, MiscCharge, miscAmount, miscItem } from '../ui.jsx';
 import { useStore, useNow } from '../../store/StoreProvider.jsx';
 import { uid } from '../../store/reducer.js';
-import { extensionQuote, validateAmount, formatMoney } from '../../lib/pricing.js';
+import { extensionQuote, changeFor, shortfallFor, round2, validateAmount, formatMoney } from '../../lib/pricing.js';
 import { remainingMs } from '../../lib/timing.js';
 
 export default function ExtendDialog({ session, initialMinutes, onClose }) {
@@ -15,12 +15,17 @@ export default function ExtendDialog({ session, initialMinutes, onClose }) {
   const [charge, setCharge] = useState(true);
   const [method, setMethod] = useState(session.method || 'cash');
   const [paid, setPaid] = useState(String(tier?.price ?? 0));
+  const [misc, setMisc] = useState(null);
+  const [tried, setTried] = useState(false);
   const fm = (n) => formatMoney(n, settings.currency);
 
   const mins = tier?.minutes ?? 0;
   const q = extensionQuote(mins, Number(paid), settings);
-  const paidErr = charge ? validateAmount(paid) : null;
-  const blocked = !tier || !!paidErr || (charge && q.shortfall > 0);
+  const extra = miscAmount(misc);
+  const price = round2((charge ? q.price : 0) + extra);
+  const paying = charge || extra > 0;
+  const paidErr = paying ? validateAmount(paid) : null;
+  const blocked = !tier || (!!misc && !extra) || !!paidErr || (paying && shortfallFor(price, Number(paid)) > 0);
   const overdue = remainingMs(session, now) < 0;
 
   const pick = (v) => {
@@ -31,16 +36,18 @@ export default function ExtendDialog({ session, initialMinutes, onClose }) {
 
   const confirm = (e) => {
     e.preventDefault();
+    setTried(true);
     if (blocked) return;
+    const items = [charge && `Additional ${mins} min`, extra && miscItem(misc)].filter(Boolean).join(' + ');
     dispatch({
       type: 'EXTEND',
       id: session.id,
       minutes: mins,
       now: Date.now(),
-      transaction: charge
+      transaction: paying
         ? {
-            id: uid(), at: Date.now(), sessionId: session.id, participant: session.name, items: `Additional ${mins} min`,
-            durationMin: mins, price: q.price, paid: Number(paid), change: q.change, method, notes: '',
+            id: uid(), at: Date.now(), sessionId: session.id, participant: session.name, items,
+            durationMin: charge ? mins : 0, price, paid: Number(paid), change: changeFor(price, Number(paid)), method, notes: '',
           }
         : null,
     });
@@ -61,10 +68,15 @@ export default function ExtendDialog({ session, initialMinutes, onClose }) {
           Charge for the additional time
         </label>
 
-        {charge && (
+        <MiscCharge misc={misc} setMisc={setMisc} fm={fm} showErrors={tried || (!!misc && misc.amount !== '')} />
+
+        {paying && (
           <>
-            <div className="readout total"><span>Price</span><strong>{fm(q.price)}</strong></div>
-            <PaymentBlock total={q.price} method={method} setMethod={setMethod} paid={paid} setPaid={setPaid} fm={fm} showErrors />
+            <div className="readout total">
+              <span>{extra && charge ? `Price (time ${fm(q.price)} + ${misc.label.trim() || 'misc'} ${fm(extra)})` : 'Price'}</span>
+              <strong>{fm(price)}</strong>
+            </div>
+            <PaymentBlock total={price} method={method} setMethod={setMethod} paid={paid} setPaid={setPaid} fm={fm} showErrors />
           </>
         )}
 
